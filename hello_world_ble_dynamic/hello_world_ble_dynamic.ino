@@ -32,67 +32,32 @@ tflite::MicroInterpreter* interpreter = nullptr;
 TfLiteTensor* input = nullptr;
 TfLiteTensor* output = nullptr;
 int inference_count = 0;
-int no_of_batches, stage=0;
+
 constexpr int kTensorArenaSize = 2000;
 uint8_t tensor_arena[kTensorArenaSize];
 }  // namespace
 
-
-//---------------------------------------------------
-
 int g_model_len=0;
-unsigned char* g_model= nullptr; //(unsigned char*) malloc(2720);
-int i, j;
-unsigned long model_duration=10, last_update_time=0;
+unsigned char* g_model= nullptr;
 
-//Flags:
-bool modelreceived= false;
-int bc=0;
+const bool modelreceived= false;
 
 BLEService modelService("BE050000-117D-453B-A18D-C76455B19B36"); // BLE Service
 // BLE Characteristics - custom 128-bit UUIDs, read and writable by central
 BLECharacteristic modelSizeCharacteristic("BE050001-117D-453B-A18D-C76455B19B36", BLERead | BLEWrite, 4);
 BLECharacteristic modelByteCharacteristic("BE050002-117D-453B-A18D-C76455B19B36", BLERead | BLEWrite, 160);
 
-int byte_array_to_int(unsigned char* b_arr){
-  int* numb= (int*) b_arr;
-  return *numb;
-}
-
-void setupBLE()
-{
-  if (!BLE.begin()) {
-    Serial.println("starting BLE failed!");
-    while (1);
-  }
-  // set advertised local name and service UUID:
-  BLE.setLocalName("NeuralNetIoT");
-  BLE.setAdvertisedService(modelService);
-
-  // add the characteristics to the service
-  modelService.addCharacteristic(modelSizeCharacteristic);
-  modelService.addCharacteristic(modelByteCharacteristic);
-
-  // add service
-  BLE.addService(modelService);
-
-  BLE.advertise();
-
-  Serial.println("BLE is ready");
-}
-
+int byte_array_to_int(unsigned char* b_arr);
+void setupSerial();
+void setupBLE();
 void receiveModel();
-
 void initializeInterpreter();
 
 // The name of this function is important for Arduino compatibility.
 void setup() { //Setup should only contain initialization of Serial and BLE.
-  int count=0;
-  Serial.begin(9600);
-  while(!Serial);
+  setupSerial();
   setupBLE();
   receiveModel();
-  //delay(1000);
   initializeInterpreter();
 }
 
@@ -134,11 +99,42 @@ void loop() {
   if (inference_count >= kInferencesPerCycle) inference_count = 0;
 }
 
+int byte_array_to_int(unsigned char* b_arr){
+  int* numb= (int*) b_arr;
+  return *numb;
+}
+
+void setupSerial(){
+  Serial.begin(9600);
+  while(!Serial);
+}
+
+void setupBLE()
+{
+  if (!BLE.begin()) {
+    Serial.println("starting BLE failed!");
+    while (1);
+  }
+  // set advertised local name and service UUID:
+  BLE.setLocalName("NeuralNetIoT");
+  BLE.setAdvertisedService(modelService);
+
+  // add the characteristics to the service
+  modelService.addCharacteristic(modelSizeCharacteristic);
+  modelService.addCharacteristic(modelByteCharacteristic);
+
+  // add service
+  BLE.addService(modelService);
+
+  BLE.advertise();
+
+  Serial.println("BLE is ready");
+}
+
 void receiveModel(){
-    stage=1;
+    int no_of_batches, stage=1, bc=0;
     //free(g_model);
     Serial.println("Ready to receive the model");
-    bc=0;
     while(!modelreceived){
       // listen for BLE peripherals to connect:
       BLEDevice central = BLE.central();
@@ -157,9 +153,8 @@ void receiveModel(){
                   while(1);
                 }
                 no_of_batches=(g_model_len/160);
-                Serial.println("Now printing model size and allocated memory..");
+                Serial.print("Model size: ");
                 Serial.println(g_model_len);
-                Serial.println(sizeof(g_model));
                 stage=2;
               }
               if (modelByteCharacteristic.written() && stage==2){
