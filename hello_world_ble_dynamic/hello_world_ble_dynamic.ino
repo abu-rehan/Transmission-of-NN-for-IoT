@@ -42,7 +42,7 @@ unsigned char* g_model= nullptr;
 
 const bool modelreceived= false;
 
-BLEService modelService("BE050000-117D-453B-A18D-C76455B19B36"); // BLE Service
+BLEService modelService("BE050000-117D-453B-A18D-C76455B19B36");
 // BLE Characteristics - custom 128-bit UUIDs, read and writable by central
 BLECharacteristic modelSizeCharacteristic("BE050001-117D-453B-A18D-C76455B19B36", BLERead | BLEWrite, 4);
 BLECharacteristic modelByteCharacteristic("BE050002-117D-453B-A18D-C76455B19B36", BLERead | BLEWrite, 160);
@@ -54,7 +54,7 @@ void receiveModel();
 void initializeInterpreter();
 
 // The name of this function is important for Arduino compatibility.
-void setup() { //Setup should only contain initialization of Serial and BLE.
+void setup() {
   setupSerial();
   setupBLE();
   receiveModel();
@@ -133,7 +133,6 @@ void setupBLE()
 
 void receiveModel(){
     int no_of_batches, stage=1, bc=0;
-    //free(g_model);
     Serial.println("Ready to receive the model");
     while(!modelreceived){
       // listen for BLE peripherals to connect:
